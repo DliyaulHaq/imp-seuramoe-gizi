@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEURAMOE GIZI - Platform Cerdas Pemantauan Gizi MBG</title>
+    <link rel="icon" type="image/svg+xml" href="logo-seuramoe-gizi.svg">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- MQTT for Realtime Sync -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+
+    <!-- TensorFlow.js & MobileNet for Real AI Food Image Recognition -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js" defer></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css?v=20260927_gram_v2">
+</head>
+<body>
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <main id="login-screen" class="screen active">
+        <div class="glass-card login-card">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="72" height="72">
+                        <defs>
+                            <linearGradient id="favGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#059669" />
+                                <stop offset="50%" stop-color="#10B981" />
+                                <stop offset="100%" stop-color="#34D399" />
+                            </linearGradient>
+                        </defs>
+                        <rect width="128" height="128" rx="36" fill="url(#favGrad)" />
+                        <path d="M64 22 L102 52 L92 58 L64 36 L36 58 L26 52 Z" fill="#FFFFFF" />
+                        <circle cx="64" cy="78" r="30" fill="#FFFFFF" />
+                        <circle cx="64" cy="78" r="25" fill="#ECFDF5" stroke="#10B981" stroke-width="2.5" />
+                        <path d="M64 83 C64 67 78 59 83 60 C83 74 72 83 64 83 Z" fill="#059669" />
+                        <path d="M64 83 C64 71 55 64 49 67 C48 76 57 83 64 83 Z" fill="#10B981" />
+                        <circle cx="64" cy="58" r="5" fill="#F59E0B" />
+                    </svg>
+                </div>
+                <h1>SEURAMOE GIZI</h1>
+                <p>Platform Cerdas Pemantauan Gizi MBG</p>
+            </div>
+            
+            <div id="auth-forms-container">
+                <!-- LOGIN FORM -->
+                <form id="login-form">
+                    <div class="input-group">
+                        <label for="login-role"><i class="fa-solid fa-users"></i> Masuk Sebagai</label>
+                        <select id="login-role" required>
+                            <option value="Employee">Pengguna</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="nik"><i class="fa-solid fa-id-badge"></i> NIK / Username</label>
+                        <input type="text" id="nik" placeholder="Masukkan NIK atau Username" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="password"><i class="fa-solid fa-lock"></i> Kata Sandi</label>
+                        <input type="password" id="password" placeholder="Masukkan Sandi" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span>Masuk</span> <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                    <p class="login-hint mt-3">Belum punya akun? <a href="#" id="show-register" class="text-primary">Daftar di sini</a></p>
+                </form>
+
+                <!-- REGISTER FORM -->
+                <form id="register-form" style="display: none;">
+                    <div class="input-group">
+                        <label for="reg-nik"><i class="fa-solid fa-id-badge"></i> NIK / Username</label>
+                        <input type="text" id="reg-nik" placeholder="Buat NIK atau Username" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="reg-name"><i class="fa-solid fa-user"></i> Nama Lengkap</label>
+                        <input type="text" id="reg-name" placeholder="Nama Anda" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="reg-password"><i class="fa-solid fa-lock"></i> Kata Sandi</label>
+                        <input type="password" id="reg-password" placeholder="Buat Sandi" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span>Daftar Akun</span> <i class="fa-solid fa-user-plus"></i>
+                    </button>
+                    <p class="login-hint mt-3">Sudah punya akun? <a href="#" id="show-login" class="text-primary">Masuk di sini</a></p>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- DASHBOARD SCREEN -->
+    <main id="dashboard-screen" class="screen hidden">
+        <nav class="glass-nav">
+            <div class="nav-brand" style="display: flex; align-items: center; gap: 0.6rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="32" height="32" style="display: inline-block; vertical-align: middle; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(16,185,129,0.25));">
+                    <defs>
+                        <linearGradient id="navGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#059669" />
+                            <stop offset="50%" stop-color="#10B981" />
+                            <stop offset="100%" stop-color="#34D399" />
+                        </linearGradient>
+                    </defs>
+                    <rect width="128" height="128" rx="36" fill="url(#navGrad)" />
+                    <path d="M64 22 L102 52 L92 58 L64 36 L36 58 L26 52 Z" fill="#FFFFFF" />
+                    <circle cx="64" cy="78" r="30" fill="#FFFFFF" />
+                    <circle cx="64" cy="78" r="25" fill="#ECFDF5" stroke="#10B981" stroke-width="2.5" />
+                    <path d="M64 83 C64 67 78 59 83 60 C83 74 72 83 64 83 Z" fill="#059669" />
+                    <path d="M64 83 C64 71 55 64 49 67 C48 76 57 83 64 83 Z" fill="#10B981" />
+                    <circle cx="64" cy="58" r="5" fill="#F59E0B" />
+                </svg>
+                <span style="font-weight: 800; color: #064E3B; letter-spacing: 0.4px; font-size: 1.1rem;">SEURAMOE GIZI</span>
+            </div>
+            <div class="nav-profile">
+                <span id="user-display-name">Karyawan</span>
+                <button id="btn-logout" class="btn btn-icon" title="Keluar"><i class="fa-solid fa-sign-out-alt"></i></button>
+            </div>
+        </nav>
+
+        <div class="dashboard-content">
+            <!-- Header Section -->
+            <header class="dashboard-header" id="dashboard-main-header">
+                <h2>Selamat Datang, <span id="header-name">Siswa / Karyawan</span>! 👋</h2>
+                <p>Media Interaktif Program Makan Bergizi Gratis (MBG) — Pemantauan Asupan & Kebutuhan Gizi Siswa.</p>
+            </header>
+
+            <!-- Home Menu Grid: 4 Fitur Utama -->
+            <div class="home-menu-grid" id="home-menu">
+                <div class="menu-item" onclick="openScreen('screen-kalkulator')">
+                    <span class="badge-ta badge-ta-1">Pindai Makanan</span>
+                    <div class="menu-icon" style="color: #10B981; margin-top:0.4rem;"><i class="fa-solid fa-camera"></i></div>
+                    <div class="menu-title">Deteksi Makanan MBG</div>
+                    <div class="menu-subtitle">Pindai Baki & Hitung Nilai Gizi Otomatis</div>
+                </div>
+                <div class="menu-item" onclick="openScreen('screen-tdee')">
+                    <span class="badge-ta badge-ta-2">Kebutuhan Energi</span>
+                    <div class="menu-icon" style="color: #10B981; margin-top:0.4rem;"><i class="fa-solid fa-calculator"></i></div>
+                    <div class="menu-title">Kalkulator Kebutuhan Gizi</div>
+                    <div class="menu-subtitle">Hitung Kebutuhan Energi & Makronutrisi</div>
+                </div>
+                <div class="menu-item" onclick="openScreen('screen-bmi')">
+                    <span class="badge-ta badge-ta-3">Status Gizi</span>
+                    <div class="menu-icon" style="color: #10B981; margin-top:0.4rem;"><i class="fa-solid fa-brain"></i></div>
+                    <div class="menu-title">Status Gizi Siswa</div>
+                    <div class="menu-subtitle">Pemeriksaan Antropometri & Indeks Massa Tubuh</div>
+                </div>
+                <div class="menu-item" onclick="openScreen('screen-dashboard-mbg')">
+                    <span class="badge-ta badge-ta-main">Evaluasi Gizi</span>
+                    <div class="menu-icon" style="color: #10B981; margin-top:0.4rem;"><i class="fa-solid fa-chart-pie"></i></div>
+                    <div class="menu-title">Dashboard Evaluasi MBG</div>
+                    <div class="menu-subtitle">Asupan Aktual vs Kebutuhan Individu</div>
+                </div>
+                <div class="menu-item" onclick="openScreen('screen-jurnal')">
+                    <div class="menu-icon"><i class="fa-solid fa-utensils"></i></div>
+                    <div class="menu-title">Kebutuhan MBG</div>
+                    <div class="menu-subtitle">Jurnal Porsi & Kepuasan Menu</div>
+                </div>
+                <div class="menu-item" onclick="openScreen('screen-pesan')">
+                    <div class="menu-icon"><i class="fa-solid fa-headset"></i></div>
+                    <div class="menu-title">Pusat Bantuan</div>
+                    <div class="menu-subtitle">Konsultasi Ahli Gizi / Admin</div>
+                </div>
+            </div>
+
+            <!-- Back Button -->
+            <button id="btn-back-home" class="btn btn-secondary hidden" style="margin-bottom: 1rem; padding: 0.5rem 1rem;" onclick="closeScreens()">
+                <i class="fa-solid fa-arrow-left"></i> Kembali ke Beranda
+            </button>
+
+            <!-- Feature Screens Wrapper -->
+            <div id="feature-screens">
+                
+                <!-- ============================================================ -->
+                <!-- SCREEN STATUS GIZI SISWA -->
+                <!-- ============================================================ -->
+                <section id="screen-bmi" class="glass-card bmi-section hidden-feature hidden">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                        <h3 style="margin:0;"><i class="fa-solid fa-brain" style="color:#10B981;"></i> Status Gizi Siswa</h3>
+                        <span class="badge-ta badge-ta-3" style="background:#ECFDF5; color:#059669; border:1px solid #059669;">Status Gizi</span>
+                    </div>
+                    <p style="font-size:0.86rem; color:var(--text-light); margin-top:0.4rem;">
+                        Pemeriksaan status gizi antropometri berbasis K-Nearest Neighbors (KNN) mengacu standar Kementerian Kesehatan RI & WHO.
+                    </p>
+                    <form id="rf-status-form" style="margin-top:1rem;">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="rf-age">Umur (Tahun)</label>
+                                <input type="number" id="rf-age" min="3" max="80" value="16" placeholder="Contoh: 16" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="rf-gender">Jenis Kelamin</label>
+                                <select id="rf-gender">
+                                    <option value="L">Laki-laki (L)</option>
+                                    <option value="P">Perempuan (P)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="weight">Berat Badan (kg)</label>
+                                <input type="number" id="weight" step="0.1" value="52" placeholder="Contoh: 52" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="height">Tinggi Badan (cm)</label>
+                                <input type="number" id="height" step="0.1" value="162" placeholder="Contoh: 162" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block" style="background:#10B981; border-color:#10B981; color:#ffffff;">
+                            <i class="fa-solid fa-calculator"></i> Periksa Status Gizi Siswa
+                        </button>
+                    </form>
+                    
+                    <div id="bmi-result-card" class="bmi-result hidden" style="margin-top:1.2rem;">
+                        <div style="font-size:0.82rem; color:var(--text-light); text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">Hasil Analisis Status Gizi (KNN):</div>
+                        <div class="bmi-score" id="bmi-score" style="margin:0.3rem 0;">22.5</div>
+                        <div class="bmi-category" id="bmi-category" style="color:#059669;">Normal / Gizi Baik</div>
+                        <div id="rf-confidence" style="display:inline-block; background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; padding:0.25rem 0.75rem; border-radius:15px; font-size:0.8rem; font-weight:700; margin-bottom:0.6rem;">
+                            Tingkat Keyakinan KNN (K=5): 96.4%
+                        </div>
+                        <p class="bmi-desc" id="bmi-desc" style="font-size:0.88rem; margin-top:0.4rem;">Berat badan Anda berada pada rentang ideal dan seimbang.</p>
+                        <button type="button" class="btn btn-secondary btn-block" style="margin-top:1rem; font-size:0.88rem;" onclick="openScreen('screen-tdee')">
+                            👉 Lanjut Hitung Kebutuhan Energi & Gizi &rarr;
+                        </button>
+                        
+                        <!-- Legenda Standar IMT (Kemenkes/WHO) -->
+                        <div class="imt-legend-card">
+                            <div class="imt-legend-title">Legenda Standar IMT (Kemenkes/WHO)</div>
+                            <div class="imt-legend-row">
+                                <div class="imt-legend-item">
+                                    <span class="imt-dot dot-yellow"></span>
+                                    <span>Kurang (&lt; 18.5)</span>
+                                </div>
+                                <div class="imt-legend-item">
+                                    <span class="imt-dot dot-green"></span>
+                                    <span>Ideal (18.5 - 25.0)</span>
+                                </div>
+                                <div class="imt-legend-item">
+                                    <span class="imt-dot dot-purple"></span>
+                                    <span>Berlebih/Obesitas (&gt; 25.0)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SCREEN KALKULATOR GIZI -->
+                <!-- ============================================================ -->
+                <section id="screen-tdee" class="glass-card hidden-feature hidden">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                        <h3 style="margin:0;"><i class="fa-solid fa-calculator" style="color:#10B981;"></i> Kalkulator Kebutuhan Gizi</h3>
+                    </div>
+
+                    <!-- PILIHAN DUAL-MODE: INDIVIDU (SCHOFIELD) VS KELOMPOK (PERMENKES NO. 28 TAHUN 2019) -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0.6rem; margin-top:1rem; background:#f8fafc; padding:0.45rem; border-radius:12px; border:1px solid #e2e8f0;">
+                        <button type="button" id="tab-btn-individu" onclick="window.switchTdeeMode('individu')" style="padding:0.75rem 0.85rem; border-radius:9px; border:2px solid #10B981; background:#ECFDF5; color:#059669; font-weight:700; font-size:0.84rem; cursor:pointer; text-align:left; transition:all 0.2s; line-height:1.35;">
+                            <i class="fa-solid fa-user-check" style="margin-right:4px;"></i> 1. Kalkulator Kebutuhan Gizi Individu (Formula Schofield)
+                        </button>
+                        <button type="button" id="tab-btn-kelompok" onclick="window.switchTdeeMode('kelompok')" style="padding:0.75rem 0.85rem; border-radius:9px; border:1.5px solid transparent; background:transparent; color:#475569; font-weight:700; font-size:0.84rem; cursor:pointer; text-align:left; transition:all 0.2s; line-height:1.35;">
+                            <i class="fa-solid fa-users-rectangle" style="margin-right:4px;"></i> 2. Kalkulator Kebutuhan Gizi Kelompok (Acuan Permenkes RI No. 28 Tahun 2019)
+                        </button>
+                    </div>
+
+                    <!-- TAB 1: 1. Kalkulator Kebutuhan Gizi Individu (Formula Schofield) -->
+                    <form id="tdee-calc-form" style="margin-top:1rem;">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="tdee-age">Umur (Tahun)</label>
+                                <input type="number" id="tdee-age" value="16" min="3" max="80" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="tdee-gender">Jenis Kelamin</label>
+                                <select id="tdee-gender">
+                                    <option value="L">Laki-laki (L)</option>
+                                    <option value="P">Perempuan (P)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="tdee-weight">Berat Badan (kg)</label>
+                                <input type="number" id="tdee-weight" step="0.1" value="52" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="tdee-height">Tinggi Badan (cm)</label>
+                                <input type="number" id="tdee-height" step="0.1" value="162" required>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="tdee-activity">Tingkat Aktivitas Fisik</label>
+                            <select id="tdee-activity">
+                                <option value="1.2">Sedentari (Jarang berolahraga / banyak duduk)</option>
+                                <option value="1.375">Ringan (Olahraga ringan 1-3 hari/minggu)</option>
+                                <option value="1.55" selected>Sedang (Aktivitas sekolah & olahraga 4-5 hari/minggu)</option>
+                                <option value="1.725">Aktif (Olahraga intensif 6-7 hari/minggu)</option>
+                                <option value="1.9">Sangat Aktif (Atlet / latihan berat harian)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block" style="background:#10B981; border-color:#10B981; color:#ffffff;">
+                            <i class="fa-solid fa-chart-line"></i> Hitung Kebutuhan Energi & Makronutrisi
+                        </button>
+                    </form>
+
+                    <!-- TAB 2: 2. Kalkulator Kebutuhan Gizi Kelompok (Acuan Permenkes RI No. 28 Tahun 2019) -->
+                    <form id="group-calc-form" class="hidden" style="margin-top:1rem;">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="group-jenjang">Jenjang Pendidikan</label>
+                                <select id="group-jenjang" required>
+                                    <option value="TK">TK / PAUD</option>
+                                    <option value="SD">SD / MI</option>
+                                    <option value="SMP">SMP / MTs</option>
+                                    <option value="SMA" selected>SMA / MA / SMK</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="group-usia">Kelompok Usia Sasaran SPPG</label>
+                                <select id="group-usia" required>
+                                    <option value="3-5" data-jenjang="TK" data-akg="1400" data-mbg="420">3 - 5 Tahun</option>
+                                    <option value="6-9" data-jenjang="SD" data-akg="1650" data-mbg="495">6 - 9 Tahun</option>
+                                    <option value="10-12" data-jenjang="SD" data-akg="1950" data-mbg="585">10 - 12 Tahun</option>
+                                    <option value="13-15" data-jenjang="SMP" data-akg="2225" data-mbg="668">13 - 15 Tahun</option>
+                                    <option value="16-18" data-jenjang="SMA" data-akg="2375" data-mbg="713" selected>16 - 18 Tahun</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block" style="background:#10B981; border-color:#10B981; color:#ffffff;">
+                            <i class="fa-solid fa-users-gear"></i> Hitung Kebutuhan Gizi Kelompok (Permenkes No. 28 Tahun 2019)
+                        </button>
+                    </form>
+
+                    <!-- TDEE Result Card -->
+                    <div id="tdee-result-card" class="hidden" style="margin-top:1.2rem;">
+                        <div style="background:white; padding:1.2rem; border-radius:14px; border:1px solid rgba(0,0,0,0.08); text-align:left;">
+                            <div id="tdee-mode-badge" style="text-align:center; margin-bottom:0.5rem;">
+                                <span style="display:inline-block; background:#ECFDF5; color:#064E3B; font-size:0.76rem; font-weight:700; padding:0.2rem 0.65rem; border-radius:20px; border:1px solid #A7F3D0;">
+                                    1. Kalkulator Kebutuhan Gizi Individu (Formula Schofield)
+                                </span>
+                            </div>
+                            <div style="text-align:center; margin-bottom:1rem;">
+                                <span style="font-size:0.8rem; color:var(--text-light); text-transform:uppercase; font-weight:700;">Target Energi Harian:</span>
+                                <div style="font-size:2rem; font-weight:800; color:#059669;" id="val-tdee-total">2.446 kcal/hari</div>
+                                <div style="font-size:0.88rem; color:var(--text-main); font-weight:600;">
+                                    <span id="lbl-bmr-wrapper">Energi Dasar: <span id="val-bmr-total">1.578</span> kcal | </span>Target 1x Porsi MBG (30%): <span id="val-mbg-target" style="color:var(--primary-color); font-weight:800;">734 kcal</span>
+                                </div>
+                            </div>
+
+                            <h4 style="font-size:0.9rem; margin-bottom:0.6rem; color:var(--text-main);"><i class="fa-solid fa-pie-chart" style="color:#10B981;"></i> Target Dekomposisi Makronutrien 1x Porsi MBG (30%):</h4>
+                            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.6rem; text-align:center;">
+                                <div style="background:#ECFDF5; border:1px solid #A7F3D0; padding:0.6rem; border-radius:8px;">
+                                    <span style="font-size:0.75rem; color:var(--text-light); display:block;">🌾 Karbohidrat (60%)</span>
+                                    <strong style="font-size:1.05rem; color:#065F46;" id="val-target-karbo">110 g</strong>
+                                    <span style="font-size:0.68rem; color:#64748b; display:block; margin-top:2px;" id="val-daily-karbo-sub">(Harian: 367 g)</span>
+                                </div>
+                                <div style="background:#ECFDF5; border:1px solid #A7F3D0; padding:0.6rem; border-radius:8px;">
+                                    <span style="font-size:0.75rem; color:var(--text-light); display:block;">🥩 Protein (15%)</span>
+                                    <strong style="font-size:1.05rem; color:#065F46;" id="val-target-pro">28 g</strong>
+                                    <span style="font-size:0.68rem; color:#64748b; display:block; margin-top:2px;" id="val-daily-pro-sub">(Harian: 92 g)</span>
+                                </div>
+                                <div style="background:#ECFDF5; border:1px solid #A7F3D0; padding:0.6rem; border-radius:8px;">
+                                    <span style="font-size:0.75rem; color:var(--text-light); display:block;">💧 Lemak (25%)</span>
+                                    <strong style="font-size:1.05rem; color:#065F46;" id="val-target-lem">20 g</strong>
+                                    <span style="font-size:0.68rem; color:#64748b; display:block; margin-top:2px;" id="val-daily-lem-sub">(Harian: 68 g)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-secondary btn-block" style="margin-top:1rem; font-size:0.88rem;" onclick="openScreen('screen-kalkulator')">
+                            📷 Lanjut Pindai Baki Makanan &rarr;
+                        </button>
+                    </div>
+
+                    <!-- ============================================================ -->
+                    <!-- BLOK KALKULATOR GIZI MANUAL (INPUT MANUAL & DATASET PRESET) -->
+                    <!-- ============================================================ -->
+                    <div style="margin-top:2rem; border-top: 1px dashed rgba(0,0,0,0.12); padding-top: 1.5rem;">
+                        <div style="margin-bottom: 1rem;">
+                            <h4 style="font-size: 1rem; margin: 0; color: var(--text-main); font-weight: 700;">
+                                <i class="fa-solid fa-list-check" style="color: #10b981;"></i> Kalkulator Gizi Manual (Kondisi Matang / Siap Saji TKPI Kemenkes)
+                            </h4>
+                            <p style="font-size: 0.84rem; color: var(--text-light); margin-top: 0.3rem;">
+                                Tentukan porsi gramasi bahan makanan olahan matang secara manual untuk menghitung total kandungan nutrisi terhadap target aktif.
+                            </p>
+                        </div>
+
+                        <form id="nutrition-form">
+                            <div class="nutrition-grid">
+                                <div class="input-group">
+                                    <label for="karbo" style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span>Karbohidrat</span>
+                                        <span style="font-size: 0.75rem; color: #059669; font-weight: 700; background: #ecfdf5; padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid rgba(16,185,129,0.25);">Porsi (gram)</span>
+                                    </label>
+                                    <div style="display: flex; gap: 0.4rem;">
+                                        <input type="text" id="karbo" value="Nasi Putih Pulen" placeholder="Ketik nama makanan (contoh: Nasi Putih / Nasi Kuning / Mie Goreng)" style="flex: 1.5; min-width: 0; padding: 0.75rem 0.6rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); font-size: 0.9rem;">
+                                        <div class="input-with-unit" style="display: flex; align-items: stretch; background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 8px; overflow: hidden; width: 72px; flex-shrink: 0;">
+                                            <input type="number" id="karbo-gram" value="150" min="0" placeholder="0" style="flex: 1; min-width: 0; padding: 0.7rem 0.25rem 0.7rem 0.45rem; border: none; outline: none; background: transparent; font-size: 0.95rem; font-weight: 700; color: var(--text-main); text-align: right;">
+                                            <span class="unit-tag" style="background: #ecfdf5; color: #047857; font-weight: 800; font-size: 0.8rem; padding: 0 0.45rem; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(16, 185, 129, 0.25); user-select: none;">g</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="prohew" style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span>Protein Hewani</span>
+                                        <span style="font-size: 0.75rem; color: #059669; font-weight: 700; background: #ecfdf5; padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid rgba(16,185,129,0.25);">Porsi (gram)</span>
+                                    </label>
+                                    <div style="display: flex; gap: 0.4rem;">
+                                        <input type="text" id="prohew" value="Ayam Lengkuas" placeholder="Ketik lauk hewani (contoh: Ayam Lengkuas / Telur Balado / Ikan Goreng)" style="flex: 1.5; min-width: 0; padding: 0.75rem 0.6rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); font-size: 0.9rem;">
+                                        <div class="input-with-unit" style="display: flex; align-items: stretch; background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 8px; overflow: hidden; width: 72px; flex-shrink: 0;">
+                                            <input type="number" id="prohew-gram" value="85" min="0" placeholder="0" style="flex: 1; min-width: 0; padding: 0.7rem 0.25rem 0.7rem 0.45rem; border: none; outline: none; background: transparent; font-size: 0.95rem; font-weight: 700; color: var(--text-main); text-align: right;">
+                                            <span class="unit-tag" style="background: #ecfdf5; color: #047857; font-weight: 800; font-size: 0.8rem; padding: 0 0.45rem; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(16, 185, 129, 0.25); user-select: none;">g</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="pronab" style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span>Protein Nabati</span>
+                                        <span style="font-size: 0.75rem; color: #059669; font-weight: 700; background: #ecfdf5; padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid rgba(16,185,129,0.25);">Porsi (gram)</span>
+                                    </label>
+                                    <div style="display: flex; gap: 0.4rem;">
+                                        <input type="text" id="pronab" value="Tempe Goreng Gurih" placeholder="Ketik lauk nabati (contoh: Tempe Goreng / Tahu Goreng / Bakwan Sayur)" style="flex: 1.5; min-width: 0; padding: 0.75rem 0.6rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); font-size: 0.9rem;">
+                                        <div class="input-with-unit" style="display: flex; align-items: stretch; background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 8px; overflow: hidden; width: 72px; flex-shrink: 0;">
+                                            <input type="number" id="pronab-gram" value="50" min="0" placeholder="0" style="flex: 1; min-width: 0; padding: 0.7rem 0.25rem 0.7rem 0.45rem; border: none; outline: none; background: transparent; font-size: 0.95rem; font-weight: 700; color: var(--text-main); text-align: right;">
+                                            <span class="unit-tag" style="background: #ecfdf5; color: #047857; font-weight: 800; font-size: 0.8rem; padding: 0 0.45rem; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(16, 185, 129, 0.25); user-select: none;">g</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="sayur" style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span>Sayuran</span>
+                                        <span style="font-size: 0.75rem; color: #059669; font-weight: 700; background: #ecfdf5; padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid rgba(16,185,129,0.25);">Porsi (gram)</span>
+                                    </label>
+                                    <div style="display: flex; gap: 0.4rem;">
+                                        <input type="text" id="sayur" value="Tumis Buncis Hijau" placeholder="Ketik nama sayur (contoh: Tumis Buncis / Sayur Sop / Capcay)" style="flex: 1.5; min-width: 0; padding: 0.75rem 0.6rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); font-size: 0.9rem;">
+                                        <div class="input-with-unit" style="display: flex; align-items: stretch; background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 8px; overflow: hidden; width: 72px; flex-shrink: 0;">
+                                            <input type="number" id="sayur-gram" value="75" min="0" placeholder="0" style="flex: 1; min-width: 0; padding: 0.7rem 0.25rem 0.7rem 0.45rem; border: none; outline: none; background: transparent; font-size: 0.95rem; font-weight: 700; color: var(--text-main); text-align: right;">
+                                            <span class="unit-tag" style="background: #ecfdf5; color: #047857; font-weight: 800; font-size: 0.8rem; padding: 0 0.45rem; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(16, 185, 129, 0.25); user-select: none;">g</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="input-group" style="grid-column: 1 / -1;">
+                                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span><i class="fa-solid fa-wand-magic-sparkles" style="color:#10B981;"></i> Menu Tambahan / Kustom (Ketik Nama & Cari dengan AI)</span>
+                                        <span style="font-size: 0.75rem; color: #059669; font-weight: 700; background: #ecfdf5; padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid rgba(16,185,129,0.25);">Porsi (gram)</span>
+                                    </label>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <input type="text" id="custom-name" placeholder="Nama Makanan (contoh: Bubur Ayam / Soto / Rendang)" style="flex: 2; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                                        <div class="input-with-unit" style="display: flex; align-items: stretch; background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 8px; overflow: hidden; width: 80px; flex-shrink: 0;">
+                                            <input type="number" id="custom-gram" placeholder="0" min="0" value="0" style="flex: 1; min-width: 0; padding: 0.7rem 0.25rem 0.7rem 0.45rem; border: none; outline: none; background: transparent; font-size: 0.95rem; font-weight: 700; color: var(--text-main); text-align: right;">
+                                            <span class="unit-tag" style="background: #ecfdf5; color: #047857; font-weight: 800; font-size: 0.8rem; padding: 0 0.45rem; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(16, 185, 129, 0.25); user-select: none;">g</span>
+                                        </div>
+                                        <button type="button" id="btn-ai-food-lookup" class="btn btn-secondary" style="background:#ECFDF5; color:#047857; border:1px solid #10B981; font-weight:700; white-space:nowrap; padding:0.6rem 0.9rem;" onclick="window.lookupCustomFoodAI()">
+                                            <i class="fa-solid fa-wand-magic-sparkles" style="color:#047857;"></i> Cari AI
+                                        </button>
+                                    </div>
+                                    <div id="ai-food-badge" style="display:none; font-size:0.8rem; margin-top:0.4rem; padding:0.4rem 0.75rem; border-radius:8px; background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46;"></div>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-calculate-nutrition" class="btn btn-primary btn-block" style="margin-top: 1rem; background:#10b981; border-color:#10b981;" onclick="window.calculateNutrition()">Hitung Total Gizi</button>
+                        </form>
+
+                        <div id="nutrition-result" class="nutrition-result hidden mt-4">
+                            <div class="nutri-box">
+                                <span class="nutri-title">Kalori</span>
+                                <span class="nutri-val" id="val-kalori">0 kcal</span>
+                            </div>
+                            <div class="nutri-box">
+                                <span class="nutri-title">Protein</span>
+                                <span class="nutri-val" id="val-protein">0 g</span>
+                            </div>
+                            <div class="nutri-box">
+                                <span class="nutri-title">Karbohidrat</span>
+                                <span class="nutri-val" id="val-karbo">0 g</span>
+                            </div>
+                            <div class="nutri-box">
+                                <span class="nutri-title">Lemak</span>
+                                <span class="nutri-val" id="val-lemak">0 g</span>
+                            </div>
+                        </div>
+
+                        <!-- Breakdown Table & Next Action Sync -->
+                        <div id="nutrition-breakdown-card" class="hidden" style="margin-top:1.2rem;">
+                            <div id="nutrition-breakdown-content"></div>
+                            <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-primary" style="flex:1; font-size:0.85rem;" onclick="openScreen('screen-dashboard-mbg')">
+                                    📊 Lihat Evaluasi Gizi di Dashboard &rarr;
+                                </button>
+                                <button type="button" class="btn btn-secondary" style="flex:1; font-size:0.85rem;" onclick="openScreen('screen-jurnal')">
+                                    🍱 Catat ke Jurnal Kebutuhan MBG &rarr;
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- DASHBOARD EVALUASI MBG -->
+                <!-- ============================================================ -->
+                <section id="screen-dashboard-mbg" class="glass-card hidden-feature hidden">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                        <h3 style="margin:0;"><i class="fa-solid fa-chart-pie" style="color:#059669;"></i> Dashboard Evaluasi Gizi</h3>
+                        <span class="badge-ta badge-ta-main">Evaluasi Gizi</span>
+                    </div>
+                    <p style="font-size:0.86rem; color:var(--text-light); margin-top:0.4rem;">
+                        Perbandingan asupan nutrisi makanan MBG aktual terhadap target kecukupan gizi individu siswa.
+                    </p>
+
+                    <!-- Student Profile Summary Bar -->
+                    <div style="background:white; padding:0.9rem; border-radius:12px; margin:1rem 0; border:1px solid rgba(0,0,0,0.06); font-size:0.86rem; display:flex; justify-content:space-between; flex-wrap:wrap; gap:0.4rem;">
+                        <div>👤 <strong>Siswa:</strong> <span id="dash-user-name">Karyawan / Siswa</span></div>
+                        <div>🧠 <strong>Status Gizi:</strong> <span id="dash-user-status" style="color:#059669; font-weight:700;">Normal / Baik</span></div>
+                        <div>🔥 <strong>Target MBG:</strong> <span id="dash-user-target" style="color:#059669; font-weight:700;">734 kcal</span></div>
+                    </div>
+
+                    <!-- Multimedia Visual Progress Bars -->
+                    <div class="progress-bar-card">
+                        <h4 style="font-size:0.92rem; margin-bottom:1rem; color:var(--text-main);"><i class="fa-solid fa-sliders"></i> Pemenuhan Zat Gizi Aktual vs Target MBG:</h4>
+                        
+                        <div class="progress-bar-item">
+                            <div class="progress-header">
+                                <span>🔥 Energi / Kalori</span>
+                                <span id="bar-label-kalori">0 / 710 kcal (0%)</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill fill-kalori" id="bar-fill-kalori" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="progress-bar-item">
+                            <div class="progress-header">
+                                <span>🥩 Protein</span>
+                                <span id="bar-label-protein">0 / 26.5 g (0%)</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill fill-protein" id="bar-fill-protein" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="progress-bar-item">
+                            <div class="progress-header">
+                                <span>🌾 Karbohidrat</span>
+                                <span id="bar-label-karbo">0 / 106.5 g (0%)</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill fill-karbo" id="bar-fill-karbo" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="progress-bar-item">
+                            <div class="progress-header">
+                                <span>💧 Lemak</span>
+                                <span id="bar-label-lemak">0 / 19.8 g (0%)</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill fill-lemak" id="bar-fill-lemak" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="dash-evaluation-text" style="background:rgba(16,185,129,0.1); padding:1rem; border-radius:12px; border:1.5px solid var(--primary-color); text-align:left; font-size:0.88rem;">
+                        <strong>💡 Evaluasi & Rekomendasi Ahli Gizi:</strong>
+                        <p style="margin:0.4rem 0 0 0;" id="dash-eval-content">Silakan lakukan pemindaian baki makanan MBG melalui menu <strong>Pindai Makanan</strong> untuk memuat data asupan aktual.</p>
+                    </div>
+
+                    <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-primary" style="flex:1; font-size:0.85rem;" onclick="openScreen('screen-kalkulator')">
+                            <i class="fa-solid fa-camera"></i> Pindai Baki Makanan
+                        </button>
+                        <button type="button" class="btn btn-secondary" style="flex:1; font-size:0.85rem;" onclick="openScreen('screen-tdee')">
+                            <i class="fa-solid fa-calculator"></i> Atur Target Kebutuhan Energi
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Daily MBG Form -->
+                <section id="screen-jurnal" class="glass-card survey-section hidden-feature hidden">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-utensils"></i> Kebutuhan MBG</h3>
+                        <span class="date-badge" id="current-date">Hari ini</span>
+                    </div>
+                    <form id="mbg-form">
+                        <div class="input-group">
+                            <label for="mbg-menu">Menu MBG Hari Ini</label>
+                            <select id="mbg-menu" required>
+                                <option value="" disabled selected>-- Pilih Paket Menu MBG --</option>
+                                <option value="Paket 1: Ayam Lengkuas + Tahu Kuning + Labu Siam + Semangka">Paket 1: Ayam Lengkuas + Tahu Kuning + Labu Siam + Semangka</option>
+                                <option value="Paket 2: Telur Rebus + Dadu Ayam + Tumis Buncis + Jeruk">Paket 2: Telur Rebus + Dadu Ayam + Tumis Buncis + Jeruk</option>
+                                <option value="Paket 3: Telur Balado + Tahu Kukus + Tumis Tauge + Melon">Paket 3: Telur Balado + Tahu Kukus + Tumis Tauge + Melon</option>
+                                <option value="Paket 4: Telur Ceplok + Tempe Goreng + Tumis Sayur + Jeruk">Paket 4: Telur Ceplok + Tempe Goreng + Tumis Sayur + Jeruk</option>
+                                <option value="Paket 5: Ayam Kremes + Sambal + Lalapan Timun Kol + Semangka">Paket 5: Ayam Kremes + Sambal + Lalapan Timun Kol + Semangka</option>
+                                <option value="Paket 6: Udang Masak Kuah + Tempe Orek + Sayur Capcay + Semangka">Paket 6: Udang Masak Kuah + Tempe Orek + Sayur Capcay + Semangka</option>
+                                <option value="Paket 7: Ikan Nila Goreng + Tempe + Sayur Bening Bayam + Pisang">Paket 7: Ikan Nila Goreng + Tempe + Sayur Bening Bayam + Pisang</option>
+                                <option value="Paket 8: Ayam Lengkuas + Tempe Orek + Sayur Sop + Kelengkeng">Paket 8: Ayam Lengkuas + Tempe Orek + Sayur Sop + Kelengkeng</option>
+                                <option value="Paket 9: Telur Ceplok + Tempe Orek + Sayur Sop + Kelengkeng">Paket 9: Telur Ceplok + Tempe Orek + Sayur Sop + Kelengkeng</option>
+                                <option value="Menu Kustom / Lainnya">Menu Kustom / Lainnya</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Porsi yang Dihabiskan</label>
+                            <div class="radio-group">
+                                <input type="radio" id="portion-1" name="portion" value="Habis Semua">
+                                <label for="portion-1" class="radio-btn">Habis Semua</label>
+                                
+                                <input type="radio" id="portion-2" name="portion" value="Sisa Sedikit">
+                                <label for="portion-2" class="radio-btn">Sisa Sedikit</label>
+                                
+                                <input type="radio" id="portion-3" name="portion" value="Sisa Banyak">
+                                <label for="portion-3" class="radio-btn">Sisa Banyak</label>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Tingkat Kepuasan Menu</label>
+                            <div class="rating-group">
+                                <input type="radio" id="star5" name="rating" value="5" /><label for="star5" title="Sangat Puas"><i class="fa-solid fa-star"></i></label>
+                                <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="Puas"><i class="fa-solid fa-star"></i></label>
+                                <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="Cukup"><i class="fa-solid fa-star"></i></label>
+                                <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="Kurang"><i class="fa-solid fa-star"></i></label>
+                                <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="Sangat Kurang"><i class="fa-solid fa-star"></i></label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">Simpan Kebutuhan MBG</button>
+                    </form>
+                </section>
+
+                <!-- Nutrition Calculator Section -->
+                <section id="screen-kalkulator" class="glass-card mt-4 nutrition-calculator hidden-feature hidden">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <div>
+                            <h3 style="margin: 0;"><i class="fa-solid fa-camera" style="color:#10B981;"></i> Deteksi Baki Makanan & Kandungan Gizi</h3>
+                            <span class="badge-ta badge-ta-1" style="margin-top:0.3rem;">Pindai Makanan Otomatis</span>
+                        </div>
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                            <button type="button" id="btn-open-vlm-key-main" class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;" onclick="if(window.openVLMModal) window.openVLMModal(); else document.getElementById('vlm-config-modal').classList.remove('hidden');">
+                                <i class="fa-solid fa-key" style="color:var(--primary-color);"></i> Kunci Gemini AI
+                            </button>
+                            <button type="button" id="btn-open-camera" class="btn btn-primary" style="font-size: 0.82rem; padding: 0.45rem 0.9rem; background:#10B981; border-color:#10B981;" onclick="if(window.openCameraModal) window.openCameraModal(); else { const m = document.getElementById('camera-modal'); if(m) m.classList.remove('hidden'); }">
+                                <i class="fa-solid fa-camera"></i> Pindai Baki Makanan
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tab Switcher Modul Pendeteksi Gizi MBG (IMP UX) -->
+                    <div id="mbg-detector-tabs" style="display: flex; gap: 0.5rem; margin-top: 1.1rem; background: #0F172A; padding: 0.4rem; border-radius: 14px; border: 1px solid #334155; flex-wrap: wrap;">
+                        <button type="button" id="btn-tab-scan-foto" onclick="window.switchMbgDetectorTab('scan')" style="flex: 1; min-width: 180px; padding: 0.65rem 0.9rem; border-radius: 10px; border: none; background: #10B981; color: #FFFFFF; font-weight: 700; font-size: 0.86rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.45rem; transition: all 0.2s;">
+                            <i class="fa-solid fa-camera"></i> Pindai Foto Baki (Kamera / Upload)
+                        </button>
+                        <button type="button" id="btn-tab-wacana-prompt" onclick="window.switchMbgDetectorTab('prompt')" style="flex: 1; min-width: 220px; padding: 0.65rem 0.9rem; border-radius: 10px; border: none; background: transparent; color: #CBD5E1; font-weight: 700; font-size: 0.86rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.45rem; transition: all 0.2s;">
+                            <i class="fa-solid fa-wand-magic-sparkles" style="color: #FBBF24;"></i> Wacana &amp; Simulasi Kombinasi Menu (Prompt AI)
+                        </button>
+                    </div>
+
+                    <!-- Panel 1: Pindai Foto Baki -->
+                    <div id="panel-detector-scan">
+                        <!-- Camera Viewfinder Placeholder Box -->
+                        <div id="camera-viewfinder-placeholder" onclick="if(window.openCameraModal) window.openCameraModal(); else { const m = document.getElementById('camera-modal'); if(m) m.classList.remove('hidden'); }" style="margin-top: 1rem; cursor: pointer; background: #0f172a; border-radius: 16px; min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed rgba(255,255,255,0.25); text-align: center; padding: 2rem; color: #94a3b8; position: relative; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);" title="Klik untuk memindai baki makanan">
+                            <div style="width: 72px; height: 72px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; color: #10B981; font-size: 2.2rem;">
+                                <i class="fa-solid fa-camera"></i>
+                            </div>
+                            <h4 style="color: #f8fafc; font-size: 1.1rem; margin-bottom: 0.4rem; font-weight: 600;">Layar Pemindai Kamera (Camera Viewfinder)</h4>
+                            <p style="font-size: 0.85rem; max-width: 420px; margin: 0 auto; color: #94a3b8; line-height: 1.5;">
+                                Tekan tombol <strong style="color: #34D399;">"Pindai Baki Makanan"</strong> di atas untuk mengaktifkan kamera atau mengunggah foto baki MBG secara otomatis.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Panel 2: Wacana & Simulasi Kombinasi Menu (Prompt AI) - High-Contrast Dark Mode -->
+                    <div id="panel-detector-prompt" class="hidden" style="margin-top: 1rem;">
+                        <div id="prompt-food-analyzer-card" style="background: #0F172A; border: 1px solid #334155; border-radius: 16px; padding: 1.35rem; color: #F8FAFC; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.75rem;">
+                                <div>
+                                    <h4 style="margin: 0; color: #F8FAFC; font-size: 1.08rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fa-solid fa-flask" style="color: #FBBF24;"></i> Wacana &amp; Simulasi Kombinasi Menu (Prompt AI)
+                                    </h4>
+                                    <p style="font-size: 0.84rem; color: #CBD5E1; margin: 0.35rem 0 0 0; line-height: 1.5;">
+                                        Ruang simulasi interaktif untuk menguji kombinasi menu MBG, melihat rumus perhitungan kalori secara transparan, dan memfinalisasi menu ke laporan.
+                                    </p>
+                                </div>
+                                <span id="wacana-mode-badge" style="font-size: 0.74rem; font-weight: 800; padding: 0.28rem 0.75rem; border-radius: 999px; background: rgba(251, 191, 36, 0.16); color: #FBBF24; border: 1px solid rgba(251, 191, 36, 0.5); letter-spacing: 0.03em;">
+                                    MODE WACANA / SIMULASI
+                                </span>
+                            </div>
+
+                            <!-- Quick Prompt Chips -->
+                            <div style="margin-bottom: 0.85rem;">
+                                <div style="font-size: 0.76rem; font-weight: 700; color: #94A3B8; margin-bottom: 0.45rem; text-transform: uppercase; letter-spacing: 0.04em;">
+                                    Contoh Skenario Cepat (Klik untuk Mengisi):
+                                </div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.45rem;">
+                                    <button type="button" onclick="window.setFoodPromptExample('Saya mau kombinasi makanan nasi putih 150g, ayam goreng 85g, sayur bayam 75g, dan pisang 80g, gimana cara kalorinya terhitung dan apakah cocok untuk anak SD?')" style="font-size: 0.77rem; padding: 0.38rem 0.75rem; border-radius: 999px; background: #1E293B; color: #E2E8F0; border: 1px solid #475569; cursor: pointer; font-weight: 600;">
+                                        🍛 Simulasi Menu Anak SD
+                                    </button>
+                                    <button type="button" onclick="window.setFoodPromptExample('Kalau lauk ayam diganti telur dadar 60g dan ditambah susu UHT 200ml bersama nasi putih 150g dan tumis buncis 75g, berapa perubahan kalorinya?')" style="font-size: 0.77rem; padding: 0.38rem 0.75rem; border-radius: 999px; background: #1E293B; color: #E2E8F0; border: 1px solid #475569; cursor: pointer; font-weight: 600;">
+                                        🔄 Ganti Lauk + Tambah Susu
+                                    </button>
+                                    <button type="button" onclick="window.setFoodPromptExample('Tambahkan segelas susu UHT 200ml dan buah jeruk 80g ke dalam hasil deteksi foto nampan tadi', true)" style="font-size: 0.77rem; padding: 0.38rem 0.75rem; border-radius: 999px; background: #1E293B; color: #34D399; border: 1px solid #10B981; cursor: pointer; font-weight: 600;">
+                                        📸 Gabung dengan Foto Baki + Susu
+                                    </button>
+                                    <button type="button" onclick="window.setFoodPromptExample('Nasi uduk 150g, tempe orek 50g, telur rebus 55g, sayur sop 100g, buah semangka 100g')" style="font-size: 0.77rem; padding: 0.38rem 0.75rem; border-radius: 999px; background: #1E293B; color: #E2E8F0; border: 1px solid #475569; cursor: pointer; font-weight: 600;">
+                                        🥗 Menu Seimbang Lengkap
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Gabung Hasil Foto Baki -->
+                            <label style="display: flex; align-items: center; gap: 0.55rem; font-size: 0.83rem; color: #E2E8F0; margin-bottom: 0.75rem; cursor: pointer; background: #1E293B; padding: 0.55rem 0.85rem; border-radius: 10px; border: 1px solid #334155;">
+                                <input type="checkbox" id="prompt-include-tray" style="width: 16px; height: 16px; accent-color: #10B981; cursor: pointer;">
+                                <span>Sertakan hasil deteksi foto baki terakhir (jika sudah memindai nampan)</span>
+                            </label>
+
+                            <!-- Prompt Input Box -->
+                            <div style="display: flex; flex-direction: column; gap: 0.7rem;">
+                                <textarea id="food-prompt-input" rows="3" placeholder="Ketik kombinasi makanan atau pertanyaan Anda di sini...&#10;Contoh: Saya mau kombinasi nasi putih 150g, ayam goreng 85g, sayur bayam 75g, dan pisang 80g, bagaimana cara kalorinya terhitung?" style="width: 100%; border-radius: 12px; padding: 0.9rem 1rem; border: 1px solid #475569; background: #1E293B; color: #F8FAFC; font-family: inherit; font-size: 0.92rem; resize: vertical; outline: none; box-sizing: border-box; line-height: 1.5;"></textarea>
+                                <div id="prompt-error-banner" class="hidden" style="background: rgba(239, 68, 68, 0.16); border: 1px solid #EF4444; color: #FCA5A5; border-radius: 10px; padding: 0.65rem 0.9rem; font-size: 0.84rem; font-weight: 600;"></div>
+                                <button type="button" id="btn-analyze-food-prompt" class="btn btn-primary" onclick="window.analyzeFoodPrompt()" style="background: #10B981; border-color: #10B981; color: #FFFFFF; font-weight: 700; padding: 0.78rem 1.2rem; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.94rem;">
+                                    <i class="fa-solid fa-calculator"></i> Hitung Simulasi &amp; Tampilkan Cara Perhitungan
+                                </button>
+                            </div>
+
+                            <!-- Hasil Analisis Prompt Teks (Draft Wacana -> Finalisasi) -->
+                            <div id="prompt-analysis-results" class="hidden" style="margin-top: 1.15rem;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Auto Detection Result Display Container -->
+                    <div id="auto-detection-results" class="hidden mt-4">
+                        <!-- Populated dynamically upon scanning -->
+                    </div>
+                </section>
+
+                <!-- History Section -->
+                <section id="screen-riwayat" class="glass-card mt-4 hidden-feature hidden">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-clock-rotate-left"></i> Riwayat MBG Anda</h3>
+                    </div>
+                    <div class="history-list" id="history-list">
+                        <p class="empty-state">Belum ada data kebutuhan MBG.</p>
+                    </div>
+                </section>
+
+                <!-- Messages Section (Pegawai) -->
+                <section id="screen-pesan" class="glass-card history-section mt-4 hidden-feature hidden">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-envelope"></i> Hubungi Admin SPPG</h3>
+                    </div>
+                    <form id="employee-message-form" style="margin-bottom: 1.5rem;">
+                        <div class="input-group">
+                            <textarea id="employee-message-text" rows="3" placeholder="Tuliskan keluhan, saran, atau laporan terkait makanan..." required style="width: 100%; border-radius: 12px; padding: 1rem; border: 1px solid rgba(0,0,0,0.1); background: rgba(255, 255, 255, 0.6); resize: vertical; outline: none; font-family: inherit; font-size: 1rem;"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Kirim Pesan</button>
+                    </form>
+                    
+                    <h4 style="margin-bottom: 1rem; color: var(--secondary-color); font-size: 1rem;">Balasan dari Admin:</h4>
+                    <div class="history-list" id="employee-message-list">
+                        <p class="empty-state">Belum ada pesan.</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- ADMIN DASHBOARD SCREEN -->
+    <main id="admin-screen" class="screen hidden">
+        <nav class="glass-nav">
+            <div class="nav-brand" style="display: flex; align-items: center; gap: 0.6rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="30" height="30" style="display: inline-block; vertical-align: middle; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(16,185,129,0.25));">
+                    <defs>
+                        <linearGradient id="adminNavGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#059669" />
+                            <stop offset="50%" stop-color="#10B981" />
+                            <stop offset="100%" stop-color="#34D399" />
+                        </linearGradient>
+                    </defs>
+                    <rect width="128" height="128" rx="36" fill="url(#adminNavGrad)" />
+                    <path d="M64 22 L102 52 L92 58 L64 36 L36 58 L26 52 Z" fill="#FFFFFF" />
+                    <circle cx="64" cy="78" r="30" fill="#FFFFFF" />
+                    <circle cx="64" cy="78" r="25" fill="#ECFDF5" stroke="#10B981" stroke-width="2.5" />
+                    <path d="M64 83 C64 67 78 59 83 60 C83 74 72 83 64 83 Z" fill="#059669" />
+                    <path d="M64 83 C64 71 55 64 49 67 C48 76 57 83 64 83 Z" fill="#10B981" />
+                    <circle cx="64" cy="58" r="5" fill="#F59E0B" />
+                </svg>
+                <span style="font-weight: 800; color: #064E3B; letter-spacing: 0.4px; font-size: 1.05rem;">SEURAMOE GIZI Admin</span>
+            </div>
+            <div class="nav-profile">
+                <span id="admin-display-name">Admin</span>
+                <button id="btn-admin-logout" class="btn btn-icon" title="Keluar"><i class="fa-solid fa-sign-out-alt"></i></button>
+            </div>
+        </nav>
+
+        <div class="dashboard-content">
+            <header class="dashboard-header">
+                <h2>Panel Administrator</h2>
+                <p>Pantau laporan konsumsi gizi dan pesan dari karyawan SPPG.</p>
+            </header>
+
+            <div class="grid-layout">
+                <!-- Global Logs -->
+                <section class="glass-card history-section" style="margin-top: 0;">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-list-check"></i> Pantauan Log Kebutuhan Pegawai</h3>
+                    </div>
+                    <div class="history-list" id="admin-history-list" style="max-height: 500px;">
+                        <p class="empty-state">Belum ada data kebutuhan MBG yang masuk.</p>
+                    </div>
+                </section>
+
+                <!-- Inbox -->
+                <section class="glass-card history-section" style="margin-top: 0;">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-inbox"></i> Kotak Masuk Pesan</h3>
+                    </div>
+                    <div class="history-list" id="admin-message-list" style="max-height: 500px;">
+                        <p class="empty-state">Belum ada pesan masuk.</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Data berhasil disimpan!</div>
+
+    <!-- Camera Modal -->
+    <div id="camera-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem;">
+                <h3 style="margin:0;"><i class="fa-solid fa-camera" style="color: #10B981;"></i> Pindai Baki Makanan MBG</h3>
+                <div style="display:flex; align-items:center; gap:0.4rem;">
+                    <button type="button" id="btn-open-vlm-modal" class="btn" style="font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:12px; background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; cursor:pointer;">
+                        <i class="fa-solid fa-key"></i> Kunci AI
+                    </button>
+                    <span id="vlm-active-badge" style="display:none;"></span>
+                </div>
+            </div>
+
+            <!-- Hidden Engine Switches for script compatibility -->
+            <div class="vlm-engine-switch" style="display:none;">
+                <button type="button" id="btn-mode-vlm"></button>
+                <button type="button" id="btn-mode-yolo"></button>
+            </div>
+
+            <div class="camera-container">
+                <video id="camera-video" autoplay playsinline></video>
+                <img id="camera-preview-img" style="display: none; width: 100%; height: auto; max-height: 65vh; object-fit: contain; border-radius: 12px; background: #000;" alt="Preview Foto">
+                <div class="scanner-overlay hidden" id="scanner-overlay">
+                    <div class="scan-line"></div>
+                    <p id="scan-status-text">Menganalisis Komposisi Makanan...</p>
+                </div>
+            </div>
+            <p class="camera-hint">Arahkan kamera ke baki ompreng MBG Anda atau pilih foto dari Galeri</p>
+            
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                <button type="button" id="btn-capture" class="btn btn-primary" style="flex: 1; min-width: 80px; background: #10B981; border: none;">
+                    <i class="fa-solid fa-camera"></i> Pindai Foto
+                </button>
+                <button type="button" class="btn btn-secondary" style="flex: 1; min-width: 80px; background: var(--secondary-color); color: white;" onclick="document.getElementById('upload-gallery').click()">
+                    <i class="fa-solid fa-image"></i> Galeri
+                </button>
+                <button type="button" id="btn-close-camera" class="btn btn-secondary" style="flex: 1; min-width: 80px;" onclick="if(window.closeCameraModal) window.closeCameraModal(); else { const m = document.getElementById('camera-modal'); if(m) m.classList.add('hidden'); }">
+                    <i class="fa-solid fa-arrow-left"></i> Kembali
+                </button>
+                <input type="file" id="upload-gallery" accept="image/*" style="display: none;">
+            </div>
+
+            <!-- Hidden AI processing elements -->
+            <canvas id="ai-capture-canvas" style="display: none;"></canvas>
+            <img id="ai-upload-preview" alt="Preview" style="display: none;">
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div id="custom-alert-modal" class="modal hidden">
+        <div class="modal-content glass-card" style="max-width: 460px; text-align: center;">
+            <div style="font-size: 2.6rem; color: var(--primary-color); margin-bottom: 0.6rem;">
+                <i class="fa-solid fa-utensils"></i>
+            </div>
+            <h3 style="margin-bottom: 0.5rem;">Informasi Gizi MBG</h3>
+            <div id="custom-alert-message" style="color: var(--text-main); margin-bottom: 1.5rem; text-align: left; max-height: 70vh; overflow-y: auto;">Pesan alert di sini</div>
+            <button type="button" id="btn-close-alert" class="btn btn-primary btn-block">Mengerti</button>
+        </div>
+    </div>
+
+    <!-- Custom Prompt Modal (Balas & Ajukan Pertanyaan) -->
+    <div id="custom-prompt-modal" class="modal hidden">
+        <div class="modal-content glass-card" style="max-width: 460px; text-align: center;">
+            <div style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 0.6rem;">
+                <i class="fa-solid fa-reply"></i>
+            </div>
+            <h3 style="margin-bottom: 0.3rem;">Balas & Pertanyaan</h3>
+            <p id="custom-prompt-message" style="color: var(--text-main); margin-bottom: 0.8rem; font-size:0.9rem;">Masukkan balasan atau pertanyaan ke pengguna:</p>
+            
+            <div id="prompt-preset-container" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.8rem; justify-content:center;">
+                <button type="button" class="btn" style="font-size:0.75rem; padding:0.25rem 0.55rem; border-radius:12px; background:rgba(16,185,129,0.12); color:#059669; border:1px solid rgba(16,185,129,0.3); cursor:pointer;" onclick="document.getElementById('custom-prompt-input').value='Terima kasih atas masukannya! Kami terus menjaga standar kecukupan AKG untuk seluruh karyawan.'">👍 Standar AKG</button>
+                <button type="button" class="btn" style="font-size:0.75rem; padding:0.25rem 0.55rem; border-radius:12px; background:rgba(59,130,246,0.12); color:#2563eb; border:1px solid rgba(59,130,246,0.3); cursor:pointer;" onclick="document.getElementById('custom-prompt-input').value='Bagaimana dengan porsi & rasa bumbu hari ini, apakah sudah pas dengan selera Anda?'">❓ Tanya Rasa/Porsi</button>
+                <button type="button" class="btn" style="font-size:0.75rem; padding:0.25rem 0.55rem; border-radius:12px; background:rgba(245,158,11,0.12); color:#d97706; border:1px solid rgba(245,158,11,0.3); cursor:pointer;" onclick="document.getElementById('custom-prompt-input').value='Apakah ada saran rekomendasi lauk/sayur yang Anda harapkan untuk menu pekan depan?'">🥗 Tanya Usul Menu</button>
+            </div>
+
+            <textarea id="custom-prompt-input" rows="3" style="width: 100%; border-radius: 8px; padding: 0.8rem; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 1.2rem; outline: none; font-family: inherit; font-size:0.92rem;"></textarea>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" id="btn-cancel-prompt" class="btn btn-secondary" style="flex: 1; background: var(--text-light); color: white;">Batal</button>
+                <button type="button" id="btn-submit-prompt" class="btn btn-primary" style="flex: 1;">Kirim</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Configuration Modal -->
+    <div id="vlm-config-modal" class="modal hidden">
+        <div class="modal-content glass-card" style="max-width: 440px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem;">
+                <h3 style="margin:0; font-size:1.1rem;"><i class="fa-solid fa-key" style="color:var(--primary-color);"></i> Kunci API Google Gemini (Opsional)</h3>
+                <button type="button" id="btn-close-vlm-modal" class="btn btn-icon" style="font-size:1.2rem; background:none; border:none; cursor:pointer;">&times;</button>
+            </div>
+            <div id="vlm-status-desc" style="font-size:0.85rem; color:var(--text-light); margin-bottom:0.8rem;">
+                Jika web di-deploy di Vercel, Anda dapat memasukkan <code>GEMINI_API_KEY</code> di Environment Variables Vercel atau masukkan di bawah ini agar pemindaian baki makanan berjalan 100% otomatis di HP:
+            </div>
+            <div class="input-group" style="margin-bottom:1rem;">
+                <input type="password" id="vlm-api-key" placeholder="AIzaSy... atau AQ..." style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid rgba(0,0,0,0.1); font-family:monospace; font-size:0.9rem;">
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button type="button" id="btn-clear-vlm-key" class="btn btn-secondary" style="flex:1;">Hapus Kunci</button>
+                <button type="button" id="btn-save-vlm-key" class="btn btn-primary" style="flex:1;">Simpan Kunci</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js?v=20260929_permanent_v14"></script>
+</body>
+</html>

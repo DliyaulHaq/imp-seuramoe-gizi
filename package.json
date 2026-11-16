@@ -1,0 +1,10 @@
+{
+  "name": "seuramoe-gizi-mbg",
+  "version": "2.0.0",
+  "private": true,
+  "description": "SEURAMOE GIZI - Platform Pemantauan Gizi & Deteksi Menu Program Makan Bergizi Gratis (MBG)",
+  "scripts": {
+    "build": "node --check app.js && node --check api/gemini.js && node --check api/auth.js && node --check api/sync.js",
+    "check": "npm run build"
+  }
+}
